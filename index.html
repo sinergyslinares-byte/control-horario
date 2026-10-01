@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="description" content="Control Horario Pro 2026 - Sistema profesional">
+<meta name="theme-color" content="#667eea">
+<title>Control Horario Pro 2026</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<!-- Otras librerías -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+:root {
+  --primary: #667eea; --primary-dark: #5568d3; --secondary: #764ba2;
+  --success: #10b981; --warning: #f59e0b; --danger: #ef4444; --info: #3b82f6;
+  --bg: #f3f4f6; --bg-card: #ffffff; --text: #1f2937; --text-light: #6b7280;
+  --border: #e5e7eb; --shadow: 0 4px 6px -1px rgba(0,0,0,0.1); --radius: 10px;
+}
+[data-theme="dark"] {
+  --bg: #111827; --bg-card: #1f2937; --text: #f9fafb; --text-light: #9ca3af;
+  --border: #374151;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background 0.3s, color 0.3s; }
+
+/* Estado de conexión */
+.connection-status {
+  position: fixed; top: 10px; right: 10px; padding: 6px 12px;
+  border-radius: 20px; font-size: 0.8em; font-weight: 600; z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.connection-status.connected { background: var(--success); color: white; }
+.connection-status.disconnected { background: var(--danger); color: white; }
+.connection-status.syncing { background: var(--warning); color: white; }
+
+/* Loading */
+.loading-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center;
+  z-index: 10000; color: white; flex-direction: column; gap: 20px;
+}
+.spinner {
+  width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3);
+  border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* LOGIN */
+.login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); padding: 20px; }
+.login-box { background: var(--bg-card); padding: 40px; border-radius: 16px; width: 100%; max-width: 450px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.login-box h1 { text-align: center; margin-bottom: 10px; color: var(--text); font-size: 1.8em; }
+.login-box .subtitle { text-align: center; color: var(--text-light); margin-bottom: 30px; font-size: 0.9em; }
+.login-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+.login-tab { flex: 1; padding: 10px; border: 2px solid var(--border); background: var(--bg); color: var(--text); border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+.login-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+.header { background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: white; padding: 15px 20px; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100; }
+.header-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.logo { font-size: 1.3em; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+.user-info { display: flex; align-items: center; gap: 10px; font-size: 0.9em; }
+.user-avatar { width: 35px; height: 35px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-weight: bold; }
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.container { max-width: 1400px; margin: 0 auto; padding: 0 20px 20px; }
+.tabs { display: flex; gap: 5px; margin: 15px 0; overflow-x: auto; flex-wrap: wrap; }
+.tab-btn { background: var(--bg-card); color: var(--text); border: 2px solid var(--border); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9em; white-space: nowrap; transition: all 0.2s; }
+.tab-btn:hover { border-color: var(--primary); }
+.tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+.tab-content { display: none; animation: fadeIn 0.3s; }
+.tab-content.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.card { background: var(--bg-card); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 15px; }
+.card h2 { margin-bottom: 15px; font-size: 1.2em; display: flex; align-items: center; gap: 8px; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+
+.btn { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9em; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-success { background: var(--success); } .btn-success:hover { background: #059669; }
+.btn-danger { background: var(--danger); } .btn-danger:hover { background: #dc2626; }
+.btn-info { background: var(--info); } .btn-info:hover { background: #2563eb; }
+.btn-warning { background: var(--warning); }
+.btn-secondary { background: var(--text-light); }
+.btn-whatsapp { background: #25D366; }
+.btn-block { width: 100%; } .btn-sm { padding: 5px 10px; font-size: 0.8em; }
+
+.input, .select { width: 100%; padding: 8px 12px; border: 2px solid var(--border); border-radius: 6px; font-size: 0.95em; margin-bottom: 10px; background: var(--bg-card); color: var(--text); }
+.input:focus, .select:focus { outline: none; border-color: var(--primary); }
+label { display: block; margin-bottom: 4px; font-weight: 600; font-size: 0.85em; }
+
+.tablet-container { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); border-radius: 15px; padding: 30px 20px; min-height: 400px; display: flex; flex-direction: column; align-items: center; color: white; }
+.scanner-area { background: white; border-radius: 10px; padding: 20px; width: 100%; max-width: 500px; color: #333; }
+#reader { width: 100%; min-height: 200px; background: var(--bg); border-radius: 8px; }
+.scanner-status { text-align: center; padding: 10px; background: var(--bg); border-radius: 6px; margin-top: 10px; font-weight: 600; }
+
+.worker-status { background: white; border-radius: 10px; padding: 20px; width: 100%; max-width: 500px; display: none; color: #333; margin-top: 15px; }
+.worker-status.active { display: block; }
+.worker-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid var(--border); }
+.worker-avatar { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); display: flex; align-items: center; justify-content: center; font-size: 1.5em; color: white; font-weight: bold; flex-shrink: 0; }
+.status-badge { display: inline-block; padding: 5px 12px; border-radius: 15px; font-weight: 600; font-size: 0.85em; }
+.status-badge.fuera { background: #fee2e2; color: #991b1b; }
+.status-badge.dentro { background: #d1fae5; color: #065f46; }
+.status-badge.descanso { background: #fef3c7; color: #92400e; }
+.status-badge.vacaciones { background: #dbeafe; color: #1e40af; }
+
+.action-buttons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 15px; }
+.action-btn { padding: 12px; border: none; border-radius: 6px; font-size: 0.95em; font-weight: 600; cursor: pointer; color: white; transition: all 0.2s; }
+.action-btn:hover:not(:disabled) { transform: translateY(-2px); }
+.action-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.action-btn.entrada { background: var(--success); }
+.action-btn.descanso-inicio { background: var(--warning); }
+.action-btn.descanso-fin { background: var(--info); }
+.action-btn.salida { background: var(--danger); }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px; }
+.stat-card { background: var(--bg-card); padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary); box-shadow: var(--shadow); }
+.stat-card.success { border-left-color: var(--success); }
+.stat-card.warning { border-left-color: var(--warning); }
+.stat-card.danger { border-left-color: var(--danger); }
+.stat-card.info { border-left-color: var(--info); }
+.stat-number { font-size: 1.8em; font-weight: bold; }
+.stat-label { color: var(--text-light); font-size: 0.85em; }
+
+.qr-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; }
+.qr-card { background: var(--bg-card); border-radius: var(--radius); padding: 15px; box-shadow: var(--shadow); text-align: center; border-top: 4px solid var(--primary); }
+.qr-card img { width: 200px; height: 200px; margin: 10px 0; border-radius: 8px; }
+
+.table-container { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; background: var(--bg-card); }
+th, td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9em; }
+th { background: var(--primary); color: white; }
+
+.alert { padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid; font-size: 0.9em; }
+.alert-info { background: #dbeafe; color: #1e40af; border-color: var(--info); }
+.alert-success { background: #d1fae5; color: #065f46; border-color: var(--success); }
+.alert-warning { background: #fef3c7; color: #92400e; border-color: var(--warning); }
+.alert-danger { background: #fee2e2; color: #991b1b; border-color: var(--danger); }
+
+.toast { position: fixed; bottom: 20px; right: 20px; background: var(--success); color: white; padding: 12px 20px; border-radius: 6px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); z-index: 10000; max-width: 350px; animation: slideIn 0.3s; }
+.toast.error { background: var(--danger); }
+@keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+.modal-overlay.active { display: flex; }
+.modal { background: var(--bg-card); border-radius: var(--radius); padding: 25px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
+.modal h2 { margin-bottom: 15px; }
+
+.empty { text-align: center; color: var(--text-light); padding: 30px; font-style: italic; }
+.btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.hidden { display: none !important; }
+
+@media (max-width: 768px) {
+  .action-buttons { grid-template-columns: 1fr; }
+  .header-content { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<!-- Indicador de conexión -->
+<div id="connection-status" class="connection-status disconnected">
+  🔴 Conectando...
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay" class="loading-overlay hidden">
+  <div class="spinner"></div>
+  <div>Cargando...</div>
+</div>
+
+<!-- PANTALLA DE LOGIN -->
+<div id="login-screen" class="login-screen">
+  <div class="login-box">
+    <h1>🏢 Control Horario Pro</h1>
+    <p class="subtitle">Sistema profesional de control horario 2026</p>
+    
+    <div class="login-tabs">
+      <button class="login-tab active" onclick="showLoginTab('login')">Iniciar Sesión</button>
+      <button class="login-tab" onclick="showLoginTab('register')">Registrar Empresa</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div id="login-form">
+      <label>Email</label>
+      <input type="email" id="login-email" class="input" placeholder="admin@empresa.com">
+      <label>Contraseña</label>
+      <input type="password" id="login-password" class="input" placeholder="••••••••">
+      <button onclick="login()" class="btn btn-block" id="btn-login">🔐 Iniciar Sesión</button>
+      <div id="login-error" style="color: var(--danger); margin-top: 10px; text-align: center;"></div>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div id="register-form" class="hidden">
+      <label>Nombre de la empresa</label>
+      <input type="text" id="reg-company" class="input" placeholder="Mi Empresa S.L.">
+      <label>CIF</label>
+      <input type="text" id="reg-cif" class="input" placeholder="B12345678">
+      <label>Email del administrador</label>
+      <input type="email" id="reg-email" class="input" placeholder="admin@empresa.com">
+      <label>Contraseña (mínimo 6 caracteres)</label>
+      <input type="password" id="reg-password" class="input" placeholder="••••••••">
+      <label>Nombre del administrador</label>
+      <input type="text" id="reg-name" class="input" placeholder="Juan García">
+      <button onclick="register()" class="btn btn-success btn-block" id="btn-register">✅ Registrar Empresa</button>
+      <div id="register-error" style="color: var(--danger); margin-top: 10px; text-align: center;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP PRINCIPAL -->
+<div id="app-screen" class="hidden">
+  <header class="header">
+    <div class="header-content">
+      <div class="logo">🏢 <span id="company-name">Control Horario Pro</span></div>
+      <div class="user-info">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div>
+          <div id="user-name" style="font-weight: 600;">Usuario</div>
+          <div id="user-role" style="font-size: 0.8em; opacity: 0.9;">Admin</div>
+        </div>
+        <button class="btn btn-sm" onclick="toggleTheme()">🌓</button>
+        <button class="btn btn-sm btn-danger" onclick="logout()"> Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tablet">📱 Tablet</button>
+      <button class="tab-btn" data-tab="dashboard">📊 Dashboard</button>
+      <button class="tab-btn" data-tab="workers">👥 Trabajadores</button>
+      <button class="tab-btn" data-tab="vacations">📅 Vacaciones</button>
+      <button class="tab-btn" data-tab="history">📋 Historial</button>
+      <button class="tab-btn" data-tab="reports">📄 Informes</button>
+      <button class="tab-btn" data-tab="settings">️ Config</button>
+    </div>
+
+    <!-- TAB: TABLET -->
+    <div id="tablet-tab" class="tab-content active">
+      <div class="tablet-container">
+        <h2 style="margin-bottom:15px;">📱 Fichaje de Jornada</h2>
+        <div class="scanner-area">
+          <div id="reader"></div>
+          <button onclick="startScanner()" class="btn btn-info btn-block" style="margin-top:10px;">📷 Activar cámara</button>
+          <div class="scanner-status" id="scanner-status">Esperando QR del trabajador...</div>
+          
+          <div style="margin-top:15px; padding-top:15px; border-top:2px dashed var(--border);">
+            <strong> Fichaje manual (admin):</strong>
+            <select id="manual-worker-select" class="select">
+              <option value="">-- Seleccionar trabajador --</option>
+            </select>
+            <input type="password" id="admin-pin" class="input" placeholder="PIN Admin">
+            <button onclick="validarFichajeManual()" class="btn btn-info btn-block"> Validar y Fichar</button>
+          </div>
+        </div>
+        
+        <div class="worker-status" id="worker-status">
+          <div class="worker-header">
+            <div class="worker-avatar" id="worker-avatar">-</div>
+            <div style="flex:1;">
+              <h3 id="worker-name" style="margin-bottom:4px;">-</h3>
+              <p id="worker-role" style="color:var(--text-light); font-size:0.9em;">-</p>
+            </div>
+            <span class="status-badge fuera" id="current-status-badge">FUERA</span>
+          </div>
+          <div class="action-buttons">
+            <button class="action-btn entrada" id="btn-entrada" onclick="registrarAccion('entrada')">▶️ ENTRADA</button>
+            <button class="action-btn descanso-inicio" id="btn-inicio-descanso" onclick="registrarAccion('inicio_descanso')">⏸️ INICIO PAUSA</button>
+            <button class="action-btn descanso-fin" id="btn-fin-descanso" onclick="registrarAccion('fin_descanso')">▶️ FIN PAUSA</button>
+            <button class="action-btn salida" id="btn-salida" onclick="registrarAccion('salida')">⏹️ SALIDA</button>
+          </div>
+          <button onclick="cancelarSeleccion()" class="btn btn-secondary btn-block" style="margin-top:12px;">❌ Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: DASHBOARD -->
+    <div id="dashboard-tab" class="tab-content">
+      <div class="stats-grid">
+        <div class="stat-card success"><div class="stat-number" id="stat-dentro">0</div><div class="stat-label">🟢 En empresa</div></div>
+        <div class="stat-card warning"><div class="stat-number" id="stat-descanso">0</div><div class="stat-label">🟡 En pausa</div></div>
+        <div class="stat-card danger"><div class="stat-number" id="stat-fuera">0</div><div class="stat-label">🔴 Fuera</div></div>
+        <div class="stat-card info"><div class="stat-number" id="stat-hoy">0h</div><div class="stat-label">⏱️ Horas hoy</div></div>
+        <div class="stat-card"><div class="stat-number" id="stat-total">0</div><div class="stat-label"> Empleados</div></div>
+        <div class="stat-card warning"><div class="stat-number" id="stat-vacaciones">0</div><div class="stat-label">🏖️ Vacaciones</div></div>
+      </div>
+      <div class="card"><h2>🔥 Actividad reciente</h2><div id="recent-activity"></div></div>
+    </div>
+
+    <!-- TAB: TRABAJADORES -->
+    <div id="workers-tab" class="tab-content">
+      <div class="card-grid">
+        <div class="card">
+          <h2>➕ Nuevo trabajador</h2>
+          <label>Nombre completo *</label><input type="text" id="new-worker-name" class="input">
+          <label>Puesto *</label><input type="text" id="new-worker-role" class="input">
+          <label>ID Empleado *</label><input type="text" id="new-worker-id" class="input">
+          <label>Departamento</label><input type="text" id="new-worker-dept" class="input">
+          <label>Teléfono (WhatsApp)</label><input type="tel" id="new-worker-phone" class="input" placeholder="+34600000000">
+          <button onclick="addWorker()" class="btn btn-success btn-block">➕ Añadir trabajador</button>
+        </div>
+        <div class="card">
+          <h2>👥 Plantilla (<span id="worker-count">0</span>)</h2>
+          <input type="text" id="worker-search" class="input" placeholder=" Buscar..." oninput="renderWorkerList()">
+          <div style="margin-bottom:10px;">
+            <select id="filter-dept" class="select" onchange="renderWorkerList()">
+              <option value="">Todos los departamentos</option>
+            </select>
+          </div>
+          <div id="worker-list"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>🎫 Tarjetas QR Personales</h2>
+        <div class="alert alert-info">💡 Imprime estas tarjetas. Se generan como imágenes para máxima compatibilidad.</div>
+        <div class="btn-group" style="margin-bottom:15px;">
+          <button onclick="renderQRCards()" class="btn btn-info">🔄 Regenerar QRs</button>
+          <button onclick="window.print()" class="btn btn-success">🖨️ Imprimir todas</button>
+        </div>
+        <div class="qr-cards-grid" id="qr-cards-container"></div>
+      </div>
+    </div>
+
+    <!-- TAB: VACACIONES -->
+    <div id="vacations-tab" class="tab-content">
+      <div class="card-grid">
+        <div class="card">
+          <h2>➕ Registrar Ausencia</h2>
+          <label>Trabajador *</label>
+          <select id="vac-worker" class="select"></select>
+          <label>Tipo *</label>
+          <select id="vac-type" class="select">
+            <option value="vacaciones">Vacaciones</option>
+            <option value="baja">Baja médica</option>
+            <option value="permiso">Permiso retribuido</option>
+          </select>
+          <label>Fecha inicio *</label><input type="date" id="vac-start" class="input">
+          <label>Fecha fin *</label><input type="date" id="vac-end" class="input">
+          <button onclick="addVacation()" class="btn btn-success btn-block">➕ Registrar</button>
+        </div>
+        <div class="card">
+          <h2>📅 Ausencias registradas</h2>
+          <div id="vacations-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: HISTORIAL -->
+    <div id="history-tab" class="tab-content">
+      <div class="card">
+        <h2>📋 Historial de fichajes</h2>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:15px;">
+          <div><label>Desde</label><input type="date" id="filter-from" class="input"></div>
+          <div><label>Hasta</label><input type="date" id="filter-to" class="input"></div>
+          <div><label>Trabajador</label><select id="filter-worker" class="select"><option value="">Todos</option></select></div>
+        </div>
+        <div class="btn-group" style="margin-bottom:15px;">
+          <button onclick="renderHistory()" class="btn">🔍 Filtrar</button>
+          <button onclick="exportCSV()" class="btn btn-success">📊 CSV</button>
+          <button onclick="exportExcel()" class="btn btn-info">📈 Excel</button>
+        </div>
+        <div class="table-container" style="max-height:500px; overflow-y:auto;">
+          <table><thead><tr><th>Fecha/Hora</th><th>Trabajador</th><th>Acción</th><th>Hash</th></tr></thead><tbody id="history-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: INFORMES -->
+    <div id="reports-tab" class="tab-content">
+      <div class="card">
+        <h2>📄 Generador de informes PDF</h2>
+        <div id="pdf-status" class="alert alert-info">Verificando motor de PDF...</div>
+        <div class="card-grid">
+          <div>
+            <h3 style="margin-bottom:12px; font-size:1em;">📅 Informes por período</h3>
+            <button onclick="generatePDF('dia')" class="btn btn-info btn-block" style="margin-bottom:8px;">📄 Informe del DÍA</button>
+            <button onclick="generatePDF('semana')" class="btn btn-info btn-block" style="margin-bottom:8px;">📄 Informe de la SEMANA</button>
+            <button onclick="generatePDF('mes')" class="btn btn-info btn-block">📄 Informe del MES</button>
+          </div>
+          <div>
+            <h3 style="margin-bottom:12px; font-size:1em;">👤 Informe individual</h3>
+            <label>Trabajador</label><select id="report-worker" class="select"></select>
+            <label>Período</label><select id="report-period" class="select">
+              <option value="dia">Hoy</option>
+              <option value="semana">Esta semana</option>
+              <option value="mes" selected>Este mes</option>
+            </select>
+            <button onclick="generateIndividualReport()" class="btn btn-success btn-block">📄 Generar informe</button>
+          </div>
+        </div>
+      </div>
+      <div class="card"><h2>📊 Informes generados</h2><div id="generated-reports-list"></div></div>
+    </div>
+
+    <!-- TAB: CONFIG -->
+    <div id="settings-tab" class="tab-content">
+      <div class="card-grid">
+        <div class="card">
+          <h2>️ Configuración de la Empresa</h2>
+          <label>Nombre empresa</label><input type="text" id="cfg-company" class="input">
+          <label>CIF / NIF</label><input type="text" id="cfg-cif" class="input">
+          <label>Dirección</label><input type="text" id="cfg-address" class="input">
+          <label>PIN administrador</label><input type="password" id="cfg-pin" class="input">
+          <label>Jornada diaria (horas)</label><input type="number" id="cfg-hours" class="input" value="8" min="1" max="24">
+          <button onclick="saveSettings()" class="btn btn-success btn-block"> Guardar configuración</button>
+        </div>
+        <div class="card">
+          <h2>💾 Backup y Restauración</h2>
+          <div class="alert alert-warning">⚠️ Los datos se guardan en Firebase. Los backups son para recuperación.</div>
+          <button onclick="exportBackup()" class="btn btn-success btn-block" style="margin-bottom:10px;"> Exportar backup (JSON)</button>
+          <label>Importar backup</label><input type="file" id="import-file" accept=".json" class="input">
+          <button onclick="importBackup()" class="btn btn-info btn-block">📥 Importar</button>
+          <hr style="margin:15px 0; border-color:var(--border);">
+          <button onclick="deleteCompany()" class="btn btn-danger btn-block">️ Eliminar empresa</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================
+// CONFIGURACIÓN DE FIREBASE - TU CONFIGURACIÓN
+// ============================================
+const firebaseConfig = {
+  apiKey: "AIzaSyCFEe4opEgBSihp3wGGQ_n13yt3Bh90bQA",
+  authDomain: "horarios-605bf.firebaseapp.com",
+  projectId: "horarios-605bf",
+  storageBucket: "horarios-605bf.firebasestorage.app",
+  messagingSenderId: "480768430584",
+  appId: "1:480768430584:web:51cb5ba6687e697256060d",
+  measurementId: "G-MFED0DE9KF"
+};
+
+// Inicializar Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ============================================
+// VARIABLES GLOBALES
+// ============================================
+let currentUser = null;
+let currentCompany = null;
+let currentCompanyData = null;
+let currentWorker = null;
+let html5Qrcode = null;
+let unsubscribeCompany = null;
+
+// ============================================
+// UTILIDADES
+// ============================================
+function showToast(msg, type = 'success') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
+}
+
+function closeModal(id) {
+  document.getElementById(id)?.classList.remove('active');
+}
+
+function getInitials(name) {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+}
+
+function formatDate(iso) {
+  try { return new Date(iso).toLocaleString('es-ES'); } catch { return iso; }
+}
+
+function getToday() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  document.documentElement.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+}
+
+function showLoading(show) {
+  const overlay = document.getElementById('loading-overlay');
+  if (show) overlay.classList.remove('hidden');
+  else overlay.classList.add('hidden');
+}
+
+function updateConnectionStatus(status) {
+  const el = document.getElementById('connection-status');
+  if (status === 'connected') {
+    el.className = 'connection-status connected';
+    el.textContent = '🟢 Conectado';
+  } else if (status === 'disconnected') {
+    el.className = 'connection-status disconnected';
+    el.textContent = '🔴 Desconectado';
+  } else {
+    el.className = 'connection-status syncing';
+    el.textContent = '🟡 Sincronizando...';
+  }
+}
+
+// ============================================
+// LOGIN Y REGISTRO
+// ============================================
+function showLoginTab(tab) {
+  document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  if (tab === 'login') {
+    document.getElementById('login-form').classList.remove('hidden');
+    document.getElementById('register-form').classList.add('hidden');
+  } else {
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('register-form').classList.remove('hidden');
+  }
+}
+
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + 'salt_2026');
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function register() {
+  const company = document.getElementById('reg-company').value.trim();
+  const cif = document.getElementById('reg-cif').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const name = document.getElementById('reg-name').value.trim();
+  const errorEl = document.getElementById('register-error');
+  const btn = document.getElementById('btn-register');
+
+  if (!company || !email || !password || !name) {
+    errorEl.textContent = '❌ Completa todos los campos';
+    return;
+  }
+  if (password.length < 6) {
+    errorEl.textContent = '❌ La contraseña debe tener al menos 6 caracteres';
+    return;
+  }
+
+  try {
+    btn.disabled = true;
+    btn.textContent = 'Creando...';
+    
+    const companyId = 'company_' + Date.now();
+    const passwordHash = await hashPassword(password);
+    
+    const companyData = {
+      name: company,
+      cif: cif,
+      address: '',
+      adminEmail: email,
+      adminPasswordHash: passwordHash,
+      adminName: name,
+      pin: '1234',
+      dailyHours: 8,
+      workers: [
+        { id: 'EMP001', name: 'María García López', role: 'Desarrolladora Senior', dept: 'Tecnología', phone: '+34600111222' },
+        { id: 'EMP002', name: 'Carlos Ruiz Martín', role: 'Administrativo', dept: 'Administración', phone: '+34600333444' },
+        { id: 'EMP003', name: 'Ana Fernández Díaz', role: 'Operaria de Almacén', dept: 'Logística', phone: '+34600555666' },
+        { id: 'EMP004', name: 'Javier Moreno Sánchez', role: 'Responsable RRHH', dept: 'RRHH', phone: '+34600777888' }
+      ],
+      lastHash: '0000000000000000000000000000000000000000000000000000000000000000',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    await db.collection('companies').doc(companyId).set(companyData);
+    
+    currentUser = { email, name, role: 'admin' };
+    currentCompany = { id: companyId, ...companyData };
+    currentCompanyData = companyData;
+    
+    localStorage.setItem('session', JSON.stringify({ user: currentUser, companyId }));
+    showApp();
+    
+  } catch (err) {
+    console.error('Error registrando:', err);
+    errorEl.textContent = '❌ Error: ' + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✅ Registrar Empresa';
+  }
+}
+
+async function login() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errorEl = document.getElementById('login-error');
+  const btn = document.getElementById('btn-login');
+
+  if (!email || !password) {
+    errorEl.textContent = ' Completa todos los campos';
+    return;
+  }
+
+  try {
+    btn.disabled = true;
+    btn.textContent = 'Iniciando...';
+    
+    const companiesRef = db.collection('companies');
+    const snapshot = await companiesRef.where('adminEmail', '==', email).get();
+    
+    if (snapshot.empty) {
+      errorEl.textContent = '❌ Empresa no encontrada';
+      btn.disabled = false;
+      btn.textContent = '🔐 Iniciar Sesión';
+      return;
+    }
+
+    const doc = snapshot.docs[0];
+    const company = { id: doc.id, ...doc.data() };
+    
+    const passwordHash = await hashPassword(password);
+    if (company.adminPasswordHash !== passwordHash) {
+      errorEl.textContent = '❌ Contraseña incorrecta';
+      btn.disabled = false;
+      btn.textContent = '🔐 Iniciar Sesión';
+      return;
+    }
+
+    currentUser = { email, name: company.adminName, role: 'admin' };
+    currentCompany = company;
+    currentCompanyData = company;
+    
+    localStorage.setItem('session', JSON.stringify({ user: currentUser, companyId: company.id }));
+    showApp();
+    
+  } catch (err) {
+    console.error('Error login:', err);
+    errorEl.textContent = ' Error: ' + err.message;
+    btn.disabled = false;
+    btn.textContent = '🔐 Iniciar Sesión';
+  }
+}
+
+function logout() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  localStorage.removeItem('session');
+  if (unsubscribeCompany) {
+    unsubscribeCompany();
+    unsubscribeCompany = null;
+  }
+  location.reload();
+}
+
+function showApp() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app-screen').classList.remove('hidden');
+
+  document.getElementById('company-name').textContent = currentCompanyData.name;
+  document.getElementById('user-name').textContent = currentUser.name;
+  document.getElementById('user-role').textContent = currentUser.role === 'admin' ? 'Administrador' : 'Usuario';
+  document.getElementById('user-avatar').textContent = currentUser.name.charAt(0).toUpperCase();
+
+  initApp();
+  
+  // Escuchar cambios en tiempo real
+  unsubscribeCompany = db.collection('companies').doc(currentCompany.id)
+    .onSnapshot((doc) => {
+      if (doc.exists) {
+        currentCompanyData = doc.data();
+        updateConnectionStatus('connected');
+      } else {
+        updateConnectionStatus('disconnected');
+      }
+    }, (error) => {
+      console.error('Error escuchando cambios:', error);
+      updateConnectionStatus('disconnected');
+    });
+}
+
+// ============================================
+// FUNCIONES DE LA APP
+// ============================================
+async function saveCompanyData() {
+  try {
+    updateConnectionStatus('syncing');
+    await db.collection('companies').doc(currentCompany.id).update({
+      ...currentCompanyData,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    updateConnectionStatus('connected');
+  } catch (e) {
+    console.error('Error guardando:', e);
+    updateConnectionStatus('disconnected');
+    showToast('❌ Error al guardar', 'error');
+  }
+}
+
+async function sha256(message) {
+  try {
+    if (window.crypto && window.crypto.subtle) {
+      const buf = new TextEncoder().encode(message);
+      const hash = await crypto.subtle.digest('SHA-256', buf);
+      return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+  } catch (e) {}
+  let hash = 0;
+  for (let i = 0; i < message.length; i++) {
+    hash = ((hash << 5) - hash) + message.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(16).padStart(64, '0');
+}
+
+async function generateHash(registro, previousHash) {
+  const data = `${registro.workerId}|${registro.timestamp}|${registro.accion}|${previousHash}`;
+  return await sha256(data);
+}
+
+// Tabs
+function setupTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tab + '-tab').classList.add('active');
+      btn.classList.add('active');
+      
+      if (tab === 'dashboard') updateDashboard();
+      else if (tab === 'workers') { renderWorkerList(); renderQRCards(); updateDeptFilter(); }
+      else if (tab === 'vacations') { populateVacWorker(); renderVacations(); }
+      else if (tab === 'history') { populateWorkerFilter(); renderHistory(); }
+      else if (tab === 'reports') { populateReportWorker(); renderGeneratedReports(); }
+      else if (tab === 'settings') loadSettings();
+      else stopScanner();
+    });
+  });
+}
+
+// Fichaje manual
+function validarFichajeManual() {
+  const workerId = document.getElementById('manual-worker-select').value;
+  const pin = document.getElementById('admin-pin').value;
+  
+  if (!workerId) { showToast('Selecciona un trabajador', 'error'); return; }
+  if (pin !== currentCompanyData.pin) { showToast('❌ PIN incorrecto', 'error'); return; }
+  
+  const worker = currentCompanyData.workers.find(w => w.id === workerId);
+  if (worker) {
+    currentWorker = worker;
+    showWorkerStatus(worker);
+    stopScanner();
+    document.getElementById('scanner-status').textContent = '👤 ' + worker.name;
+    document.getElementById('scanner-status').style.background = '#dbeafe';
+    document.getElementById('admin-pin').value = '';
+  }
+}
+
+// Escáner
+async function startScanner() {
+  const statusEl = document.getElementById('scanner-status');
+  if (typeof Html5Qrcode === 'undefined') {
+    statusEl.textContent = '❌ Escáner no cargó. Usa fichaje manual.';
+    statusEl.style.background = '#fee2e2';
+    return;
+  }
+  try {
+    if (html5Qrcode) { await html5Qrcode.stop(); html5Qrcode = null; }
+    html5Qrcode = new Html5Qrcode("reader");
+    await html5Qrcode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      onScanSuccess,
+      () => {}
+    );
+    statusEl.textContent = '📷 Escaneando...';
+    statusEl.style.background = '#d1fae5';
+  } catch (error) {
+    statusEl.textContent = '❌ Error: ' + error.message;
+    statusEl.style.background = '#fee2e2';
+  }
+}
+
+async function stopScanner() {
+  try {
+    if (html5Qrcode) { await html5Qrcode.stop(); html5Qrcode = null; }
+  } catch (e) {}
+}
+
+function onScanSuccess(decodedText) {
+  try {
+    const data = JSON.parse(decodedText);
+    const worker = currentCompanyData.workers.find(w => w.id === data.id);
+    if (!worker) {
+      document.getElementById('scanner-status').textContent = '❌ No encontrado';
+      document.getElementById('scanner-status').style.background = '#fee2e2';
+      return;
+    }
+    currentWorker = worker;
+    showWorkerStatus(worker);
+    stopScanner();
+    document.getElementById('scanner-status').textContent = '✅ ' + worker.name;
+    document.getElementById('scanner-status').style.background = '#d1fae5';
+  } catch (e) {
+    document.getElementById('scanner-status').textContent = '❌ QR inválido';
+    document.getElementById('scanner-status').style.background = '#fee2e2';
+  }
+}
+
+function isOnVacation(workerId, dateStr) {
+  dateStr = dateStr || getToday();
+  return currentCompanyData.vacations?.some(v => v.workerId === workerId && dateStr >= v.start && dateStr <= v.end) || false;
+}
+
+function getWorkerEstado(workerId) {
+  if (isOnVacation(workerId)) return 'vacaciones';
+  const today = getToday();
+  const registros = (currentCompanyData.registros || [])
+    .filter(r => r.workerId === workerId && r.timestamp.startsWith(today))
+    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  if (registros.length === 0) return 'fuera';
+  const last = registros[registros.length - 1];
+  if (last.accion === 'entrada') return 'dentro';
+  if (last.accion === 'inicio_descanso') return 'descanso';
+  if (last.accion === 'fin_descanso') return 'dentro';
+  if (last.accion === 'salida') return 'fuera';
+  return 'fuera';
+}
+
+function showWorkerStatus(worker) {
+  const estado = getWorkerEstado(worker.id);
+  document.getElementById('worker-avatar').textContent = getInitials(worker.name);
+  document.getElementById('worker-name').textContent = worker.name;
+  document.getElementById('worker-role').textContent = worker.role + (worker.dept ? ' · ' + worker.dept : '');
+  const badge = document.getElementById('current-status-badge');
+  badge.className = 'status-badge ' + estado;
+  const labels = { fuera: 'FUERA', dentro: 'DENTRO', descanso: 'EN PAUSA', vacaciones: 'DE VACACIONES' };
+  badge.textContent = labels[estado] || estado.toUpperCase();
+  
+  document.getElementById('btn-entrada').disabled = estado !== 'fuera';
+  document.getElementById('btn-inicio-descanso').disabled = estado !== 'dentro';
+  document.getElementById('btn-fin-descanso').disabled = estado !== 'descanso';
+  document.getElementById('btn-salida').disabled = estado === 'fuera' || estado === 'vacaciones';
+  document.getElementById('worker-status').classList.add('active');
+}
+
+function cancelarSeleccion() {
+  currentWorker = null;
+  document.getElementById('worker-status').classList.remove('active');
+  document.getElementById('scanner-status').textContent = 'Esperando QR...';
+  document.getElementById('scanner-status').style.background = 'var(--bg)';
+  document.getElementById('manual-worker-select').value = '';
+  document.getElementById('admin-pin').value = '';
+}
+
+async function registrarAccion(accion) {
+  if (!currentWorker) { showToast('Selecciona trabajador', 'error'); return; }
+  const estado = getWorkerEstado(currentWorker.id);
+  if (accion === 'entrada' && estado !== 'fuera') { showToast('No puedes fichar entrada', 'error'); return; }
+  if (accion === 'inicio_descanso' && estado !== 'dentro') { showToast('Debes estar dentro', 'error'); return; }
+  if (accion === 'fin_descanso' && estado !== 'descanso') { showToast('No estás en pausa', 'error'); return; }
+  if (accion === 'salida' && (estado === 'fuera' || estado === 'vacaciones')) { showToast('Ya estás fuera', 'error'); return; }
+
+  try {
+    showLoading(true);
+    const registro = {
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 8),
+      workerId: currentWorker.id,
+      workerName: currentWorker.name,
+      timestamp: new Date().toISOString(),
+      accion: accion
+    };
+    registro.hash = await generateHash(registro, currentCompanyData.lastHash);
+    registro.previousHash = currentCompanyData.lastHash;
+    
+    if (!currentCompanyData.registros) currentCompanyData.registros = [];
+    currentCompanyData.registros.push(registro);
+    currentCompanyData.lastHash = registro.hash;
+    
+    await saveCompanyData();
+    showToast('✅ ' + accion.replace('_', ' ').toUpperCase() + ' - ' + currentWorker.name);
+    cancelarSeleccion();
+  } catch (e) {
+    showToast('❌ Error: ' + e.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+// Trabajadores
+async function addWorker() {
+  const name = document.getElementById('new-worker-name').value.trim();
+  const role = document.getElementById('new-worker-role').value.trim();
+  const id = document.getElementById('new-worker-id').value.trim();
+  const dept = document.getElementById('new-worker-dept').value.trim();
+  const phone = document.getElementById('new-worker-phone').value.trim();
+  
+  if (!name || !role || !id) { showToast('Completa los campos obligatorios', 'error'); return; }
+  if (currentCompanyData.workers.find(w => w.id === id)) { showToast('ID ya existe', 'error'); return; }
+  
+  currentCompanyData.workers.push({ id, name, role, dept, phone, createdAt: new Date().toISOString() });
+  await saveCompanyData();
+  
+  ['new-worker-name', 'new-worker-role', 'new-worker-id', 'new-worker-dept', 'new-worker-phone'].forEach(i => {
+    document.getElementById(i).value = '';
+  });
+  showToast('✅ ' + name + ' añadido');
+  renderWorkerList();
+  populateManualSelect();
+}
+
+async function deleteWorker(id) {
+  const w = currentCompanyData.workers.find(x => x.id === id);
+  if (!w || !confirm('¿Eliminar a ' + w.name + '?')) return;
+  currentCompanyData.workers = currentCompanyData.workers.filter(x => x.id !== id);
+  await saveCompanyData();
+  renderWorkerList();
+  populateManualSelect();
+  showToast('🗑️ Eliminado');
+}
+
+function updateDeptFilter() {
+  const depts = [...new Set((currentCompanyData.workers || []).map(w => w.dept).filter(Boolean))];
+  const sel = document.getElementById('filter-dept');
+  sel.innerHTML = '<option value="">Todos los departamentos</option>' + depts.map(d => '<option value="' + d + '">' + d + '</option>').join('');
+}
+
+function renderWorkerList() {
+  const search = (document.getElementById('worker-search').value || '').toLowerCase();
+  const deptFilter = document.getElementById('filter-dept').value;
+  const filtered = (currentCompanyData.workers || []).filter(w => {
+    const matchSearch = w.name.toLowerCase().includes(search) || w.id.toLowerCase().includes(search);
+    const matchDept = !deptFilter || w.dept === deptFilter;
+    return matchSearch && matchDept;
+  });
+  document.getElementById('worker-count').textContent = filtered.length;
+  const container = document.getElementById('worker-list');
+  if (filtered.length === 0) { container.innerHTML = '<p class="empty">No hay trabajadores</p>'; return; }
+  
+  container.innerHTML = filtered.map(w => {
+    const est = getWorkerEstado(w.id);
+    const badgeClass = est === 'fuera' ? 'fuera' : est === 'dentro' ? 'dentro' : est === 'vacaciones' ? 'vacaciones' : 'descanso';
+    const badgeText = est === 'fuera' ? '🔴 Fuera' : est === 'dentro' ? '🟢 Dentro' : est === 'vacaciones' ? '️ Vacaciones' : '🟡 Pausa';
+    const waLink = w.phone ? 'https://wa.me/' + w.phone.replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent('Hola ' + w.name + ', recuerda fichar tu jornada.') : '#';
+    return '<div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:var(--bg); border-radius:6px; margin-bottom:6px;">' +
+      '<div><strong>' + w.name + '</strong><div style="color:var(--text-light); font-size:0.85em;">' + w.role + ' ' + (w.dept ? '· ' + w.dept : '') + ' · ' + w.id + '</div></div>' +
+      '<div style="display:flex; gap:6px; align-items:center;">' +
+      '<span class="status-badge ' + badgeClass + '">' + badgeText + '</span>' +
+      (w.phone ? '<a href="' + waLink + '" target="_blank" class="btn btn-whatsapp btn-sm">📱</a>' : '') +
+      '<button onclick="deleteWorker(\'' + w.id + '\')" class="btn btn-danger btn-sm">🗑️</button>' +
+      '</div></div>';
+  }).join('');
+}
+
+function populateManualSelect() {
+  const sel = document.getElementById('manual-worker-select');
+  sel.innerHTML = '<option value="">-- Seleccionar trabajador --</option>' + 
+    (currentCompanyData.workers || []).map(w => '<option value="' + w.id + '">' + w.name + ' (' + w.id + ')</option>').join('');
+}
+
+// QR Cards
+function renderQRCards() {
+  const container = document.getElementById('qr-cards-container');
+  if ((currentCompanyData.workers || []).length === 0) { container.innerHTML = '<p class="empty">No hay trabajadores</p>'; return; }
+  
+  container.innerHTML = (currentCompanyData.workers || []).map(w => {
+    const qrData = JSON.stringify({ id: w.id, name: w.name, type: 'worker_qr' });
+    const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=10&data=' + encodeURIComponent(qrData);
+    return '<div class="qr-card">' +
+      '<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; text-align:left;">' +
+      '<div class="worker-avatar" style="width:45px;height:45px;font-size:1em;">' + getInitials(w.name) + '</div>' +
+      '<div><strong style="font-size:0.95em;">' + w.name + '</strong>' +
+      '<div style="color:var(--text-light); font-size:0.8em;">' + w.role + '</div>' +
+      '<div style="color:var(--text-light); font-size:0.75em; font-family:monospace;">' + w.id + '</div></div></div>' +
+      '<img src="' + qrUrl + '" alt="QR ' + w.name + '" style="width:200px; height:200px; margin:10px 0; border-radius:8px;" onerror="this.style.display=\'none\'">' +
+      '</div>';
+  }).join('');
+}
+
+// Vacaciones
+function populateVacWorker() {
+  const sel = document.getElementById('vac-worker');
+  sel.innerHTML = (currentCompanyData.workers || []).map(w => '<option value="' + w.id + '">' + w.name + '</option>').join('');
+}
+
+async function addVacation() {
+  const workerId = document.getElementById('vac-worker').value;
+  const type = document.getElementById('vac-type').value;
+  const start = document.getElementById('vac-start').value;
+  const end = document.getElementById('vac-end').value;
+  if (!workerId || !start || !end) { showToast('Completa todos los campos', 'error'); return; }
+  if (start > end) { showToast('Fecha inicio debe ser anterior', 'error'); return; }
+  
+  if (!currentCompanyData.vacations) currentCompanyData.vacations = [];
+  currentCompanyData.vacations.push({ id: Date.now().toString(), workerId, type, start, end });
+  await saveCompanyData();
+  showToast('✅ Ausencia registrada');
+  renderVacations();
+}
+
+async function deleteVacation(id) {
+  currentCompanyData.vacations = (currentCompanyData.vacations || []).filter(v => v.id !== id);
+  await saveCompanyData();
+  renderVacations();
+}
+
+function renderVacations() {
+  const container = document.getElementById('vacations-list');
+  if ((currentCompanyData.vacations || []).length === 0) { container.innerHTML = '<p class="empty">No hay ausencias</p>'; return; }
+  const typeLabels = { vacaciones: '🏖️ Vacaciones', baja: '🏥 Baja', permiso: '📄 Permiso' };
+  container.innerHTML = (currentCompanyData.vacations || []).sort((a,b) => new Date(b.start) - new Date(a.start)).map(v => {
+    const w = (currentCompanyData.workers || []).find(x => x.id === v.workerId);
+    return '<div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:var(--bg); border-radius:6px; margin-bottom:6px;">' +
+      '<div><strong>' + (w ? w.name : 'Desconocido') + '</strong>' +
+      '<div style="color:var(--text-light); font-size:0.85em;">' + (typeLabels[v.type] || v.type) + ': ' + v.start + ' al ' + v.end + '</div></div>' +
+      '<button onclick="deleteVacation(\'' + v.id + '\')" class="btn btn-danger btn-sm">🗑️</button></div>';
+  }).join('');
+}
+
+// Historial
+function populateWorkerFilter() {
+  const sel = document.getElementById('filter-worker');
+  sel.innerHTML = '<option value="">Todos</option>' + (currentCompanyData.workers || []).map(w => '<option value="' + w.id + '">' + w.name + '</option>').join('');
+}
+
+function renderHistory() {
+  const from = document.getElementById('filter-from').value;
+  const to = document.getElementById('filter-to').value;
+  const workerId = document.getElementById('filter-worker').value;
+  let registros = [...(currentCompanyData.registros || [])].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  if (from) registros = registros.filter(r => r.timestamp >= from);
+  if (to) registros = registros.filter(r => r.timestamp <= to + 'T23:59:59');
+  if (workerId) registros = registros.filter(r => r.workerId === workerId);
+  const body = document.getElementById('history-body');
+  if (registros.length === 0) { body.innerHTML = '<tr><td colspan="4" class="empty">No hay registros</td></tr>'; return; }
+  const accionText = { entrada: '▶️ Entrada', inicio_descanso: '⏸️ Inicio pausa', fin_descanso: '▶️ Fin pausa', salida: '️ Salida' };
+  body.innerHTML = registros.slice(0, 500).map(r => 
+    '<tr><td>' + formatDate(r.timestamp) + '</td><td>' + r.workerName + '</td><td>' + (accionText[r.accion] || r.accion) + '</td><td style="font-family:monospace; font-size:0.75em;">' + r.hash.substring(0, 12) + '...</td></tr>'
+  ).join('');
+}
+
+function exportCSV() {
+  const from = document.getElementById('filter-from').value;
+  const to = document.getElementById('filter-to').value;
+  const workerId = document.getElementById('filter-worker').value;
+  let registros = [...(currentCompanyData.registros || [])].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  if (from) registros = registros.filter(r => r.timestamp >= from);
+  if (to) registros = registros.filter(r => r.timestamp <= to + 'T23:59:59');
+  if (workerId) registros = registros.filter(r => r.workerId === workerId);
+  let csv = '\uFEFFFecha;Trabajador;ID;Acción;Hash\n';
+  registros.forEach(r => { csv += '"' + formatDate(r.timestamp) + '";"' + r.workerName + '";"' + r.workerId + '";"' + r.accion + '";"' + r.hash + '"\n'; });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'fichajes_' + getToday() + '.csv'; a.click();
+  showToast('📊 CSV descargado');
+}
+
+function exportExcel() {
+  const from = document.getElementById('filter-from').value;
+  const to = document.getElementById('filter-to').value;
+  const workerId = document.getElementById('filter-worker').value;
+  let registros = [...(currentCompanyData.registros || [])].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  if (from) registros = registros.filter(r => r.timestamp >= from);
+  if (to) registros = registros.filter(r => r.timestamp <= to + 'T23:59:59');
+  if (workerId) registros = registros.filter(r => r.workerId === workerId);
+  
+  let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body><table border="1"><tr><th>Fecha/Hora</th><th>Trabajador</th><th>ID</th><th>Acción</th><th>Hash</th></tr>';
+  registros.forEach(r => {
+    html += '<tr><td>' + formatDate(r.timestamp) + '</td><td>' + r.workerName + '</td><td>' + r.workerId + '</td><td>' + r.accion + '</td><td>' + r.hash + '</td></tr>';
+  });
+  html += '</table></body></html>';
+  
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'fichajes_' + getToday() + '.xls'; a.click();
+  showToast('📈 Excel descargado');
+}
+
+// Dashboard
+function updateDashboard() {
+  let dentro = 0, descanso = 0, fuera = 0, vacaciones = 0;
+  (currentCompanyData.workers || []).forEach(w => {
+    const est = getWorkerEstado(w.id);
+    if (est === 'dentro') dentro++;
+    else if (est === 'descanso') descanso++;
+    else if (est === 'vacaciones') vacaciones++;
+    else fuera++;
+  });
+  document.getElementById('stat-dentro').textContent = dentro;
+  document.getElementById('stat-descanso').textContent = descanso;
+  document.getElementById('stat-fuera').textContent = fuera;
+  document.getElementById('stat-vacaciones').textContent = vacaciones;
+  document.getElementById('stat-total').textContent = (currentCompanyData.workers || []).length;
+  
+  let totalMin = 0;
+  const today = getToday();
+  (currentCompanyData.workers || []).forEach(w => {
+    const regs = (currentCompanyData.registros || []).filter(r => r.workerId === w.id && r.timestamp.startsWith(today)).sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+    let entrada = null, pausaInicio = null, pausaAcumulada = 0;
+    regs.forEach(r => {
+      if (r.accion === 'entrada') entrada = new Date(r.timestamp);
+      else if (r.accion === 'inicio_descanso' && entrada) pausaInicio = new Date(r.timestamp);
+      else if (r.accion === 'fin_descanso' && pausaInicio) { pausaAcumulada += (new Date(r.timestamp) - pausaInicio) / 60000; pausaInicio = null; }
+      else if (r.accion === 'salida' && entrada) { totalMin += Math.max(0, (new Date(r.timestamp) - entrada) / 60000 - pausaAcumulada); entrada = null; pausaAcumulada = 0; }
+    });
+    if (entrada) totalMin += Math.max(0, (new Date() - entrada) / 60000 - pausaAcumulada);
+  });
+  document.getElementById('stat-hoy').textContent = (totalMin / 60).toFixed(1) + 'h';
+  
+  const recent = [...(currentCompanyData.registros || [])].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 10);
+  const container = document.getElementById('recent-activity');
+  if (recent.length === 0) { container.innerHTML = '<p class="empty">Sin actividad</p>'; return; }
+  const icons = { entrada: '▶️', inicio_descanso: '⏸️', fin_descanso: '▶️', salida: '⏹️' };
+  container.innerHTML = recent.map(r => 
+    '<div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:var(--bg); border-radius:6px; margin-bottom:6px;">' +
+    '<div><strong>' + icons[r.accion] + ' ' + r.workerName + '</strong><div style="color:var(--text-light); font-size:0.85em;">' + r.accion.replace('_', ' ') + '</div></div>' +
+    '<div style="color:var(--text-light); font-size:0.85em;">' + formatDate(r.timestamp) + '</div></div>'
+  ).join('');
+}
+
+// Informes PDF
+function getDateRange(period) {
+  const now = new Date();
+  let from, to;
+  if (period === 'dia') { from = to = getToday(); }
+  else if (period === 'semana') {
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    const start = new Date(now); start.setDate(diff);
+    from = start.toISOString().split('T')[0]; to = getToday();
+  } else if (period === 'mes') {
+    from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]; to = getToday();
+  }
+  return { from, to };
+}
+
+async function generatePDF(period) {
+  const { from, to } = getDateRange(period);
+  await generateReportPDF(from, to, 'Informe ' + period.charAt(0).toUpperCase() + period.slice(1));
+}
+
+async function generateIndividualReport() {
+  const workerId = document.getElementById('report-worker').value;
+  const period = document.getElementById('report-period').value;
+  if (!workerId) { showToast('Selecciona un trabajador', 'error'); return; }
+  const { from, to } = getDateRange(period);
+  const worker = (currentCompanyData.workers || []).find(w => w.id === workerId);
+  await generateReportPDF(from, to, 'Informe individual - ' + worker.name, workerId);
+}
+
+async function generateReportPDF(from, to, title, workerFilter) {
+  try {
+    showLoading(true);
+    if (typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF) {
+      showToast('❌ Motor de PDF no cargó', 'error');
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFillColor(102, 126, 234);
+    doc.rect(0, 0, 210, 30, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18); doc.setFont(undefined, 'bold');
+    doc.text(currentCompanyData.name, 14, 15);
+    doc.setFontSize(10); doc.setFont(undefined, 'normal');
+    doc.text('CIF: ' + (currentCompanyData.cif || '-'), 14, 22);
+    doc.text(title, 196, 15, { align: 'right' });
+    doc.text('Del ' + from + ' al ' + to, 196, 22, { align: 'right' });
+    
+    doc.setTextColor(0, 0, 0);
+    let y = 40;
+    let registros = (currentCompanyData.registros || []).filter(r => r.timestamp >= from && r.timestamp <= to + 'T23:59:59');
+    let workers = workerFilter ? (currentCompanyData.workers || []).filter(w => w.id === workerFilter) : (currentCompanyData.workers || []);
+    if (workerFilter) registros = registros.filter(r => r.workerId === workerFilter);
+    
+    doc.setFontSize(14); doc.setFont(undefined, 'bold');
+    doc.text('Resumen', 14, y); y += 8;
+    
+    let totalHoras = 0;
+    const summaryData = [];
+    workers.forEach(w => {
+      const regs = registros.filter(r => r.workerId === w.id);
+      let mins = 0, entrada = null, pausaInicio = null, pausaAcumulada = 0;
+      regs.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)).forEach(r => {
+        if (r.accion === 'entrada') entrada = new Date(r.timestamp);
+        else if (r.accion === 'inicio_descanso' && entrada) pausaInicio = new Date(r.timestamp);
+        else if (r.accion === 'fin_descanso' && pausaInicio) { pausaAcumulada += (new Date(r.timestamp) - pausaInicio) / 60000; pausaInicio = null; }
+        else if (r.accion === 'salida' && entrada) { mins += Math.max(0, (new Date(r.timestamp) - entrada) / 60000 - pausaAcumulada); entrada = null; pausaAcumulada = 0; }
+      });
+      const horas = mins / 60;
+      totalHoras += horas;
+      const dias = new Set(regs.map(r => r.timestamp.split('T')[0])).size;
+      summaryData.push([w.name, w.id, dias.toString(), horas.toFixed(2)]);
+    });
+    
+    doc.autoTable({ startY: y, head: [['Trabajador', 'ID', 'Días', 'Horas']], body: summaryData.length > 0 ? summaryData : [['Sin datos', '-', '-', '-']], theme: 'striped', headStyles: { fillColor: [102, 126, 234] } });
+    y = doc.lastAutoTable.finalY + 15;
+    
+    if (y > 240) { doc.addPage(); y = 20; }
+    doc.setFontSize(14); doc.setFont(undefined, 'bold');
+    doc.text('Detalle de fichajes', 14, y); y += 8;
+    
+    const accionText = { entrada: 'Entrada', inicio_descanso: 'Inicio pausa', fin_descanso: 'Fin pausa', salida: 'Salida' };
+    const detailData = registros.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(0, 200).map(r => [formatDate(r.timestamp), r.workerName, accionText[r.accion] || r.accion, r.hash.substring(0, 16) + '...']);
+    
+    doc.autoTable({ startY: y, head: [['Fecha/Hora', 'Trabajador', 'Acción', 'Hash']], body: detailData.length > 0 ? detailData : [['Sin registros', '-', '-', '-']], theme: 'grid', headStyles: { fillColor: [102, 126, 234] }, styles: { fontSize: 8 } });
+    y = doc.lastAutoTable.finalY + 15;
+    
+    if (y > 260) { doc.addPage(); y = 20; }
+    const signatureData = currentCompanyData.name + '|' + from + '|' + to + '|' + registros.length + '|' + totalHoras.toFixed(2);
+    const signature = await sha256(signatureData);
+    
+    doc.setFontSize(10); doc.setFont(undefined, 'bold');
+    doc.text('Firma digital (SHA-256):', 14, y); y += 5;
+    doc.setFont(undefined, 'normal'); doc.setFontSize(7);
+    doc.text(signature, 14, y); y += 8;
+    doc.setFontSize(9);
+    doc.text('Total registros: ' + registros.length + ' | Total horas: ' + totalHoras.toFixed(2) + 'h', 14, y); y += 5;
+    doc.text('Generado: ' + new Date().toLocaleString('es-ES'), 14, y);
+    
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i); doc.setFontSize(8); doc.setTextColor(150);
+      doc.text(currentCompanyData.name + ' - Página ' + i + ' de ' + pageCount, 105, 290, { align: 'center' });
+    }
+    
+    const fileName = 'informe_' + title.replace(/[^a-z0-9]/gi, '_') + '_' + from + '_' + to + '.pdf';
+    doc.save(fileName);
+    
+    if (!currentCompanyData.generatedReports) currentCompanyData.generatedReports = [];
+    currentCompanyData.generatedReports.unshift({ id: Date.now().toString(), title, from, to, fileName, signature: signature.substring(0, 32), generatedAt: new Date().toISOString(), registros: registros.length, horas: totalHoras.toFixed(2) });
+    if (currentCompanyData.generatedReports.length > 50) currentCompanyData.generatedReports = currentCompanyData.generatedReports.slice(0, 50);
+    await saveCompanyData();
+    showToast('📄 ' + fileName + ' descargado');
+    renderGeneratedReports();
+  } catch (e) {
+    showToast('❌ Error al generar PDF', 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+function populateReportWorker() {
+  const sel = document.getElementById('report-worker');
+  sel.innerHTML = '<option value="">-- Seleccionar --</option>' + (currentCompanyData.workers || []).map(w => '<option value="' + w.id + '">' + w.name + '</option>').join('');
+}
+
+function renderGeneratedReports() {
+  const container = document.getElementById('generated-reports-list');
+  if ((currentCompanyData.generatedReports || []).length === 0) { container.innerHTML = '<p class="empty">No hay informes</p>'; return; }
+  container.innerHTML = '<div class="table-container"><table><thead><tr><th>Título</th><th>Período</th><th>Registros</th><th>Horas</th><th>Fecha</th></tr></thead><tbody>' + 
+    (currentCompanyData.generatedReports || []).map(r => '<tr><td><strong>' + r.title + '</strong></td><td>' + r.from + ' → ' + r.to + '</td><td>' + r.registros + '</td><td>' + r.horas + 'h</td><td>' + formatDate(r.generatedAt) + '</td></tr>').join('') + 
+    '</tbody></table></div>';
+}
+
+// Configuración
+function loadSettings() {
+  document.getElementById('cfg-company').value = currentCompanyData.name || '';
+  document.getElementById('cfg-cif').value = currentCompanyData.cif || '';
+  document.getElementById('cfg-address').value = currentCompanyData.address || '';
+  document.getElementById('cfg-pin').value = currentCompanyData.pin || '1234';
+  document.getElementById('cfg-hours').value = currentCompanyData.dailyHours || 8;
+}
+
+async function saveSettings() {
+  currentCompanyData.name = document.getElementById('cfg-company').value || 'Mi Empresa';
+  currentCompanyData.cif = document.getElementById('cfg-cif').value || '';
+  currentCompanyData.address = document.getElementById('cfg-address').value || '';
+  currentCompanyData.pin = document.getElementById('cfg-pin').value || '1234';
+  currentCompanyData.dailyHours = parseInt(document.getElementById('cfg-hours').value) || 8;
+  document.getElementById('company-name').textContent = currentCompanyData.name;
+  await saveCompanyData();
+  showToast('✅ Guardado');
+}
+
+async function exportBackup() {
+  const data = JSON.stringify(currentCompanyData, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'backup_' + currentCompanyData.name.replace(/\s/g, '_') + '_' + getToday() + '.json'; a.click();
+  showToast('💾 Backup descargado');
+}
+
+async function importBackup() {
+  const file = document.getElementById('import-file').files[0];
+  if (!file) { showToast('Selecciona un archivo', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!imported.workers || !imported.registros) throw new Error('Formato inválido');
+      if (!confirm('¿Reemplazar todos los datos actuales?')) return;
+      
+      currentCompanyData = imported;
+      await saveCompanyData();
+      showToast('✅ Datos restaurados');
+      setTimeout(() => location.reload(), 1000);
+    } catch (err) {
+      showToast('❌ Archivo inválido', 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function deleteCompany() {
+  if (!confirm('⚠️ ¿Eliminar TODA la empresa y sus datos?')) return;
+  if (!confirm('¿Estás COMPLETAMENTE seguro? Esta acción es irreversible.')) return;
+  
+  try {
+    showLoading(true);
+    await db.collection('companies').doc(currentCompany.id).delete();
+    localStorage.removeItem('session');
+    location.reload();
+  } catch (err) {
+    showToast(' Error: ' + err.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+// Inicialización
+function initApp() {
+  setupTabs();
+  populateManualSelect();
+  const today = getToday();
+  document.getElementById('filter-from').value = today;
+  document.getElementById('filter-to').value = today;
+  
+  if (typeof window.jspdf !== 'undefined' && window.jspdf.jsPDF) {
+    document.getElementById('pdf-status').className = 'alert alert-success';
+    document.getElementById('pdf-status').innerHTML = '✅ Motor de PDF cargado correctamente.';
+  }
+  
+  document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', (e) => { if (e.target === m) m.classList.remove('active'); });
+  });
+}
+
+// Verificar sesión al cargar
+window.addEventListener('DOMContentLoaded', async () => {
+  showLoading(true);
+  
+  // Verificar conexión a Firebase
+  try {
+    await db.collection('_test').doc('_test').set({ timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+    await db.collection('_test').doc('_test').delete();
+    updateConnectionStatus('connected');
+  } catch (err) {
+    console.error('Error conectando a Firebase:', err);
+    updateConnectionStatus('disconnected');
+    showToast('❌ Error de conexión a Firebase', 'error');
+  }
+  
+  const session = localStorage.getItem('session');
+  if (session) {
+    try {
+      const { user, companyId } = JSON.parse(session);
+      currentUser = user;
+      
+      const doc = await db.collection('companies').doc(companyId).get();
+      if (doc.exists) {
+        currentCompany = { id: doc.id, ...doc.data() };
+        currentCompanyData = currentCompany;
+        showApp();
+      } else {
+        localStorage.removeItem('session');
+        showLoading(false);
+      }
+    } catch (err) {
+      console.error('Error cargando sesión:', err);
+      localStorage.removeItem('session');
+      showLoading(false);
+    }
+  } else {
+    showLoading(false);
+  }
+});
+</script>
+</body>
+</html>
