@@ -48,7 +48,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* LOGIN SCREEN */
 .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); padding: 20px; }
 .login-box { background: var(--bg-card); padding: 40px; border-radius: 16px; width: 100%; max-width: 450px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
 .login-box h1 { text-align: center; margin-bottom: 10px; color: var(--text); font-size: 1.8em; }
@@ -147,6 +146,11 @@ th { background: var(--primary); color: white; }
 .sa-return-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); margin-right: 10px; }
 .sa-return-btn:hover { background: rgba(255,255,255,0.3); }
 
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+.modal-overlay.active { display: flex; }
+.modal { background: var(--bg-card); border-radius: var(--radius); padding: 25px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
+.modal h2 { margin-bottom: 15px; }
+
 @media (max-width: 768px) {
   .action-buttons { grid-template-columns: 1fr; }
   .header-content { flex-direction: column; align-items: flex-start; }
@@ -155,7 +159,7 @@ th { background: var(--primary); color: white; }
 </head>
 <body>
 
-<div id="connection-status" class="connection-status disconnected" onclick="retryConnection()">🔴 Conectando...</div>
+<div id="connection-status" class="connection-status disconnected" onclick="retryConnection()"> Conectando...</div>
 
 <div id="loading-overlay" class="loading-overlay">
   <div class="spinner"></div>
@@ -165,7 +169,7 @@ th { background: var(--primary); color: white; }
 <!-- LOGIN SCREEN -->
 <div id="login-screen" class="login-screen hidden">
   <div class="login-box">
-    <h1>🏢 Control Horario Pro</h1>
+    <h1> Control Horario Pro</h1>
     <p class="subtitle">Plataforma de gestión de fichajes 2026</p>
     
     <label>Email</label>
@@ -203,7 +207,7 @@ th { background: var(--primary); color: white; }
 
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2 style="margin: 0;">🏢 Empresas Registradas</h2>
+        <h2 style="margin: 0;"> Empresas Registradas</h2>
         <button onclick="showRegisterCompanyModal()" class="btn btn-success">➕ Registrar Nueva Empresa</button>
       </div>
       <div class="table-container">
@@ -255,19 +259,19 @@ th { background: var(--primary); color: white; }
       <button class="tab-btn" data-tab="settings">⚙️ Config</button>
     </div>
 
-    <!-- El contenido de las pestañas es idéntico al anterior, abreviado aquí por espacio, pero está completo en el código final -->
+    <!-- TAB: TABLET -->
     <div id="tablet-tab" class="tab-content active">
       <div class="tablet-container">
         <h2 style="margin-bottom:15px;">📱 Fichaje de Jornada</h2>
         <div class="scanner-area">
           <div id="reader"></div>
-          <button onclick="startScanner()" class="btn btn-info btn-block" style="margin-top:10px;">📷 Activar cámara</button>
+          <button onclick="startScanner()" class="btn btn-info btn-block" style="margin-top:10px;"> Activar cámara</button>
           <div class="scanner-status" id="scanner-status">Esperando QR del trabajador...</div>
           <div style="margin-top:15px; padding-top:15px; border-top:2px dashed var(--border);">
             <strong>👤 Fichaje manual (admin):</strong>
             <select id="manual-worker-select" class="select"><option value="">-- Seleccionar trabajador --</option></select>
             <input type="password" id="admin-pin" class="input" placeholder="PIN Admin (1234)">
-            <button onclick="validarFichajeManual()" class="btn btn-info btn-block">🔓 Validar y Fichar</button>
+            <button onclick="validarFichajeManual()" class="btn btn-info btn-block"> Validar y Fichar</button>
           </div>
         </div>
         <div class="worker-status" id="worker-status">
@@ -281,7 +285,7 @@ th { background: var(--primary); color: white; }
           </div>
           <div class="action-buttons">
             <button class="action-btn entrada" id="btn-entrada" onclick="registrarAccion('entrada')">▶️ ENTRADA</button>
-            <button class="action-btn descanso-inicio" id="btn-inicio-descanso" onclick="registrarAccion('inicio_descanso')">⏸️ INICIO PAUSA</button>
+            <button class="action-btn descanso-inicio" id="btn-inicio-descanso" onclick="registrarAccion('inicio_descanso')">️ INICIO PAUSA</button>
             <button class="action-btn descanso-fin" id="btn-fin-descanso" onclick="registrarAccion('fin_descanso')">▶️ FIN PAUSA</button>
             <button class="action-btn salida" id="btn-salida" onclick="registrarAccion('salida')">⏹️ SALIDA</button>
           </div>
@@ -289,18 +293,142 @@ th { background: var(--primary); color: white; }
         </div>
       </div>
     </div>
-    
-    <!-- (El resto de pestañas: dashboard, workers, vacations, history, reports, settings están exactamente igual que en la versión anterior) -->
-    <div id="dashboard-tab" class="tab-content"><div class="card"><h2>📊 Dashboard</h2><p>Contenido del dashboard...</p></div></div>
-    <div id="workers-tab" class="tab-content"><div class="card"><h2>👥 Trabajadores</h2><p>Contenido de trabajadores...</p></div></div>
-    <div id="vacations-tab" class="tab-content"><div class="card"><h2>📅 Vacaciones</h2><p>Contenido de vacaciones...</p></div></div>
-    <div id="history-tab" class="tab-content"><div class="card"><h2>📋 Historial</h2><p>Contenido de historial...</p></div></div>
-    <div id="reports-tab" class="tab-content"><div class="card"><h2>📄 Informes</h2><p>Contenido de informes...</p></div></div>
-    <div id="settings-tab" class="tab-content"><div class="card"><h2>⚙️ Config</h2><p>Contenido de configuración...</p></div></div>
+
+    <!-- TAB: DASHBOARD -->
+    <div id="dashboard-tab" class="tab-content">
+      <div class="stats-grid">
+        <div class="stat-card success"><div class="stat-number" id="stat-dentro">0</div><div class="stat-label"> En empresa</div></div>
+        <div class="stat-card warning"><div class="stat-number" id="stat-descanso">0</div><div class="stat-label">🟡 En pausa</div></div>
+        <div class="stat-card danger"><div class="stat-number" id="stat-fuera">0</div><div class="stat-label">🔴 Fuera</div></div>
+        <div class="stat-card info"><div class="stat-number" id="stat-hoy">0h</div><div class="stat-label">⏱️ Horas hoy</div></div>
+        <div class="stat-card"><div class="stat-number" id="stat-total">0</div><div class="stat-label">👥 Empleados</div></div>
+        <div class="stat-card warning"><div class="stat-number" id="stat-vacaciones">0</div><div class="stat-label">🏖️ Vacaciones</div></div>
+      </div>
+      <div class="card"><h2> Actividad reciente</h2><div id="recent-activity"></div></div>
+    </div>
+
+    <!-- TAB: TRABAJADORES -->
+    <div id="workers-tab" class="tab-content">
+      <div class="card-grid">
+        <div class="card">
+          <h2>➕ Nuevo trabajador</h2>
+          <label>Nombre completo *</label><input type="text" id="new-worker-name" class="input">
+          <label>Puesto *</label><input type="text" id="new-worker-role" class="input">
+          <label>ID Empleado *</label><input type="text" id="new-worker-id" class="input">
+          <label>Departamento</label><input type="text" id="new-worker-dept" class="input">
+          <label>Teléfono (WhatsApp)</label><input type="tel" id="new-worker-phone" class="input" placeholder="+34600000000">
+          <button onclick="addWorker()" class="btn btn-success btn-block">➕ Añadir trabajador</button>
+        </div>
+        <div class="card">
+          <h2>👥 Plantilla (<span id="worker-count">0</span>)</h2>
+          <input type="text" id="worker-search" class="input" placeholder="🔍 Buscar..." oninput="renderWorkerList()">
+          <div style="margin-bottom:10px;"><select id="filter-dept" class="select" onchange="renderWorkerList()"><option value="">Todos los departamentos</option></select></div>
+          <div id="worker-list"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>🎫 Tarjetas QR Personales</h2>
+        <div class="alert alert-info"> Imprime estas tarjetas.</div>
+        <div class="btn-group" style="margin-bottom:15px;">
+          <button onclick="renderQRCards()" class="btn btn-info">🔄 Regenerar QRs</button>
+          <button onclick="window.print()" class="btn btn-success">🖨️ Imprimir todas</button>
+        </div>
+        <div class="qr-cards-grid" id="qr-cards-container"></div>
+      </div>
+    </div>
+
+    <!-- TAB: VACACIONES -->
+    <div id="vacations-tab" class="tab-content">
+      <div class="card-grid">
+        <div class="card">
+          <h2>➕ Registrar Ausencia</h2>
+          <label>Trabajador *</label><select id="vac-worker" class="select"></select>
+          <label>Tipo *</label>
+          <select id="vac-type" class="select">
+            <option value="vacaciones">Vacaciones</option>
+            <option value="baja">Baja médica</option>
+            <option value="permiso">Permiso retribuido</option>
+          </select>
+          <label>Fecha inicio *</label><input type="date" id="vac-start" class="input">
+          <label>Fecha fin *</label><input type="date" id="vac-end" class="input">
+          <button onclick="addVacation()" class="btn btn-success btn-block">➕ Registrar</button>
+        </div>
+        <div class="card"><h2>📅 Ausencias registradas</h2><div id="vacations-list"></div></div>
+      </div>
+    </div>
+
+    <!-- TAB: HISTORIAL -->
+    <div id="history-tab" class="tab-content">
+      <div class="card">
+        <h2>📋 Historial de fichajes</h2>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:15px;">
+          <div><label>Desde</label><input type="date" id="filter-from" class="input"></div>
+          <div><label>Hasta</label><input type="date" id="filter-to" class="input"></div>
+          <div><label>Trabajador</label><select id="filter-worker" class="select"><option value="">Todos</option></select></div>
+        </div>
+        <div class="btn-group" style="margin-bottom:15px;">
+          <button onclick="renderHistory()" class="btn">🔍 Filtrar</button>
+          <button onclick="exportCSV()" class="btn btn-success">📊 CSV</button>
+          <button onclick="exportExcel()" class="btn btn-info">📈 Excel</button>
+        </div>
+        <div class="table-container" style="max-height:500px; overflow-y:auto;">
+          <table><thead><tr><th>Fecha/Hora</th><th>Trabajador</th><th>Acción</th><th>Hash</th></tr></thead><tbody id="history-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: INFORMES -->
+    <div id="reports-tab" class="tab-content">
+      <div class="card">
+        <h2>📄 Generador de informes PDF</h2>
+        <div id="pdf-status" class="alert alert-info">Verificando motor de PDF...</div>
+        <div class="card-grid">
+          <div>
+            <h3 style="margin-bottom:12px; font-size:1em;"> Informes por período</h3>
+            <button onclick="generatePDF('dia')" class="btn btn-info btn-block" style="margin-bottom:8px;">📄 Informe del DÍA</button>
+            <button onclick="generatePDF('semana')" class="btn btn-info btn-block" style="margin-bottom:8px;">📄 Informe de la SEMANA</button>
+            <button onclick="generatePDF('mes')" class="btn btn-info btn-block">📄 Informe del MES</button>
+          </div>
+          <div>
+            <h3 style="margin-bottom:12px; font-size:1em;">👤 Informe individual</h3>
+            <label>Trabajador</label><select id="report-worker" class="select"></select>
+            <label>Período</label><select id="report-period" class="select">
+              <option value="dia">Hoy</option><option value="semana">Esta semana</option><option value="mes" selected>Este mes</option>
+            </select>
+            <button onclick="generateIndividualReport()" class="btn btn-success btn-block">📄 Generar informe</button>
+          </div>
+        </div>
+      </div>
+      <div class="card"><h2>📊 Informes generados</h2><div id="generated-reports-list"></div></div>
+    </div>
+
+    <!-- TAB: CONFIG -->
+    <div id="settings-tab" class="tab-content">
+      <div class="card-grid">
+        <div class="card">
+          <h2>⚙️ Configuración</h2>
+          <label>Nombre empresa</label><input type="text" id="cfg-company" class="input">
+          <label>CIF / NIF</label><input type="text" id="cfg-cif" class="input">
+          <label>Dirección</label><input type="text" id="cfg-address" class="input">
+          <label>PIN administrador</label><input type="password" id="cfg-pin" class="input">
+          <label>Jornada diaria (horas)</label><input type="number" id="cfg-hours" class="input" value="8" min="1" max="24">
+          <button onclick="saveSettings()" class="btn btn-success btn-block">💾 Guardar</button>
+        </div>
+        <div class="card">
+          <h2>💾 Backup</h2>
+          <div class="alert alert-warning">⚠️ Los datos se guardan en Firebase.</div>
+          <button onclick="exportBackup()" class="btn btn-success btn-block" style="margin-bottom:10px;">📤 Exportar backup</button>
+          <label>Importar backup</label><input type="file" id="import-file" accept=".json" class="input">
+          <button onclick="importBackup()" class="btn btn-info btn-block">📥 Importar</button>
+          <hr style="margin:15px 0; border-color:var(--border);">
+          <button onclick="deleteCompany()" class="btn btn-danger btn-block">️ Eliminar empresa</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- MODAL: Registrar Empresa -->
+<!-- MODAL: Registrar Empresa (SOLO para Super Admin) -->
 <div class="modal-overlay" id="register-company-modal">
   <div class="modal">
     <h2>➕ Registrar Nueva Empresa</h2>
@@ -335,7 +463,6 @@ let useLocalMode = false;
 
 try {
   firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
   console.log('✅ Firebase inicializado: control-horario-6cad3');
 } catch (e) {
   console.error('❌ Error Firebase:', e);
@@ -484,7 +611,6 @@ async function login() {
       return;
     }
 
-    // Login de empresa exitoso
     console.log('✅ Login empresa exitoso:', company.name);
     currentUser = { email: company.adminEmail, name: company.adminName, role: 'admin' };
     currentCompany = { id: company.id };
@@ -497,7 +623,7 @@ async function login() {
     console.error('Error login:', err);
     errorEl.textContent = '❌ Error: ' + err.message;
     btn.disabled = false;
-    btn.textContent = '🔐 Iniciar Sesión';
+    btn.textContent = ' Iniciar Sesión';
     showLoading(false);
   }
 }
@@ -604,7 +730,7 @@ async function registerCompanyAsSuperAdmin() {
     await db.collection('companies').doc(companyId).set(companyData);
     showToast('✅ Empresa creada correctamente');
     closeModal('register-company-modal');
-    showSuperAdminDashboard(); // Recargar lista
+    showSuperAdminDashboard();
   } catch (err) {
     console.error('Error creando empresa:', err);
     errorEl.textContent = '❌ Error: ' + err.message;
@@ -631,7 +757,7 @@ function returnToSuperAdmin() {
 }
 
 // ============================================
-// COMPANY APP (Lógica original intacta)
+// COMPANY APP
 // ============================================
 function showCompanyApp() {
   document.getElementById('login-screen').classList.add('hidden');
@@ -689,7 +815,7 @@ async function saveCompanyData() {
 }
 
 // ============================================
-// FUNCIONES DE LA APP (Intactas)
+// TABS
 // ============================================
 function setupTabs() {
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -697,8 +823,11 @@ function setupTabs() {
       const tab = btn.dataset.tab;
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-      document.getElementById(tab + '-tab').classList.add('active');
-      btn.classList.add('active');
+      const targetTab = document.getElementById(tab + '-tab');
+      if (targetTab) {
+        targetTab.classList.add('active');
+        btn.classList.add('active');
+      }
       
       try {
         if (tab === 'dashboard') updateDashboard();
@@ -713,6 +842,9 @@ function setupTabs() {
   });
 }
 
+// ============================================
+// FICHAJE
+// ============================================
 function validarFichajeManual() {
   const workerId = document.getElementById('manual-worker-select').value;
   const pin = document.getElementById('admin-pin').value;
@@ -847,6 +979,9 @@ async function registrarAccion(accion) {
   } finally { showLoading(false); }
 }
 
+// ============================================
+// TRABAJADORES
+// ============================================
 async function addWorker() {
   const name = document.getElementById('new-worker-name').value.trim();
   const role = document.getElementById('new-worker-role').value.trim();
@@ -871,7 +1006,7 @@ async function deleteWorker(id) {
   await saveCompanyData();
   renderWorkerList();
   populateManualSelect();
-  showToast('🗑️ Eliminado');
+  showToast('️ Eliminado');
 }
 
 function updateDeptFilter() {
@@ -893,14 +1028,14 @@ function renderWorkerList() {
   container.innerHTML = filtered.map(w => {
     const est = getWorkerEstado(w.id);
     const badgeClass = est === 'fuera' ? 'fuera' : est === 'dentro' ? 'dentro' : est === 'vacaciones' ? 'vacaciones' : 'descanso';
-    const badgeText = est === 'fuera' ? '🔴 Fuera' : est === 'dentro' ? '🟢 Dentro' : est === 'vacaciones' ? '🏖️ Vacaciones' : '🟡 Pausa';
+    const badgeText = est === 'fuera' ? '🔴 Fuera' : est === 'dentro' ? '🟢 Dentro' : est === 'vacaciones' ? '🏖️ Vacaciones' : ' Pausa';
     const waLink = w.phone ? 'https://wa.me/' + w.phone.replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent('Hola ' + w.name + ', recuerda fichar tu jornada.') : '#';
     return '<div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:var(--bg); border-radius:6px; margin-bottom:6px;">' +
       '<div><strong>' + w.name + '</strong><div style="color:var(--text-light); font-size:0.85em;">' + w.role + ' ' + (w.dept ? '· ' + w.dept : '') + ' · ' + w.id + '</div></div>' +
       '<div style="display:flex; gap:6px; align-items:center;">' +
       '<span class="status-badge ' + badgeClass + '">' + badgeText + '</span>' +
       (w.phone ? '<a href="' + waLink + '" target="_blank" class="btn btn-whatsapp btn-sm">📱</a>' : '') +
-      '<button onclick="deleteWorker(\'' + w.id + '\')" class="btn btn-danger btn-sm">🗑️</button></div></div>';
+      '<button onclick="deleteWorker(\'' + w.id + '\')" class="btn btn-danger btn-sm">️</button></div></div>';
   }).join('');
 }
 
@@ -925,6 +1060,9 @@ function renderQRCards() {
   }).join('');
 }
 
+// ============================================
+// VACACIONES
+// ============================================
 function populateVacWorker() {
   document.getElementById('vac-worker').innerHTML = (currentCompanyData.workers || []).map(w => '<option value="' + w.id + '">' + w.name + '</option>').join('');
 }
@@ -962,6 +1100,9 @@ function renderVacations() {
   }).join('');
 }
 
+// ============================================
+// HISTORIAL
+// ============================================
 function populateWorkerFilter() {
   document.getElementById('filter-worker').innerHTML = '<option value="">Todos</option>' + (currentCompanyData.workers || []).map(w => '<option value="' + w.id + '">' + w.name + '</option>').join('');
 }
@@ -976,7 +1117,7 @@ function renderHistory() {
   if (workerId) registros = registros.filter(r => r.workerId === workerId);
   const body = document.getElementById('history-body');
   if (registros.length === 0) { body.innerHTML = '<tr><td colspan="4" class="empty">No hay registros</td></tr>'; return; }
-  const accionText = { entrada: '▶️ Entrada', inicio_descanso: '⏸️ Inicio pausa', fin_descanso: '▶️ Fin pausa', salida: '⏹️ Salida' };
+  const accionText = { entrada: '▶️ Entrada', inicio_descanso: '️ Inicio pausa', fin_descanso: '▶️ Fin pausa', salida: '⏹️ Salida' };
   body.innerHTML = registros.slice(0, 500).map(r => '<tr><td>' + formatDate(r.timestamp) + '</td><td>' + r.workerName + '</td><td>' + (accionText[r.accion] || r.accion) + '</td><td style="font-family:monospace; font-size:0.75em;">' + r.hash.substring(0, 12) + '...</td></tr>').join('');
 }
 
@@ -1011,6 +1152,9 @@ function exportExcel() {
   showToast('📈 Excel descargado');
 }
 
+// ============================================
+// DASHBOARD
+// ============================================
 function updateDashboard() {
   let dentro = 0, descanso = 0, fuera = 0, vacaciones = 0;
   (currentCompanyData.workers || []).forEach(w => {
@@ -1040,12 +1184,15 @@ function updateDashboard() {
   const recent = [...(currentCompanyData.registros || [])].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 10);
   const container = document.getElementById('recent-activity');
   if (recent.length === 0) { container.innerHTML = '<p class="empty">Sin actividad</p>'; return; }
-  const icons = { entrada: '▶️', inicio_descanso: '⏸️', fin_descanso: '▶️', salida: '⏹️' };
+  const icons = { entrada: '▶️', inicio_descanso: '⏸️', fin_descanso: '▶️', salida: '️' };
   container.innerHTML = recent.map(r => '<div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:var(--bg); border-radius:6px; margin-bottom:6px;">' +
     '<div><strong>' + icons[r.accion] + ' ' + r.workerName + '</strong><div style="color:var(--text-light); font-size:0.85em;">' + r.accion.replace('_', ' ') + '</div></div>' +
     '<div style="color:var(--text-light); font-size:0.85em;">' + formatDate(r.timestamp) + '</div></div>').join('');
 }
 
+// ============================================
+// HASH Y PDF
+// ============================================
 async function sha256(message) {
   try {
     if (window.crypto && window.crypto.subtle) {
@@ -1168,6 +1315,9 @@ function renderGeneratedReports() {
     (currentCompanyData.generatedReports || []).map(r => '<tr><td><strong>' + r.title + '</strong></td><td>' + r.from + ' → ' + r.to + '</td><td>' + r.registros + '</td><td>' + r.horas + 'h</td><td>' + formatDate(r.generatedAt) + '</td></tr>').join('') + '</tbody></table></div>';
 }
 
+// ============================================
+// CONFIG
+// ============================================
 function loadSettings() {
   document.getElementById('cfg-company').value = currentCompanyData.name || '';
   document.getElementById('cfg-cif').value = currentCompanyData.cif || '';
@@ -1225,11 +1375,14 @@ async function deleteCompany() {
     localStorage.removeItem('session');
     location.reload();
   } catch (err) {
-    showToast('❌ Error: ' + err.message, 'error');
+    showToast(' Error: ' + err.message, 'error');
     showLoading(false);
   }
 }
 
+// ============================================
+// INIT
+// ============================================
 function initApp() {
   setupTabs();
   populateManualSelect();
@@ -1243,15 +1396,18 @@ function initApp() {
 }
 
 // ============================================
-// INICIO DE LA APP
+// INICIO
 // ============================================
 window.addEventListener('DOMContentLoaded', async () => {
   console.log('🚀 Iniciando app SaaS...');
   
-  // Forzamos que el loading se quite si pasa algo raro
   setTimeout(() => {
-    showLoading(false);
-  }, 3000);
+    if (!document.getElementById('login-screen').classList.contains('hidden') || 
+        !document.getElementById('super-admin-screen').classList.contains('hidden') ||
+        !document.getElementById('app-screen').classList.contains('hidden')) {
+      showLoading(false);
+    }
+  }, 5000);
 
   try {
     const testPromise = db.collection('_connection_test').doc('test').set({ ts: Date.now() });
